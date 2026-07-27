@@ -1,8 +1,8 @@
 const FILES = {
-  '2G': 'https://drive.usercontent.google.com/download?id=1zwa8F_WrJS9LXArcNJqmemn7FK96Ycnu&export=download&confirm=t',
-  '3G': 'https://drive.usercontent.google.com/download?id=1HCI7IuWjMle50E-TRAz1cbo-yZLaUPF-&export=download&confirm=t',
-  '4G': 'https://drive.usercontent.google.com/download?id=13q7CDdLC0Hy4lmgyu9PY-EA-hBgDGFpj&export=download&confirm=t',
-  '5G': 'https://drive.usercontent.google.com/download?id=1Ff7NnCsDQl0YdbDxvEEa82rrFtYzojVB&export=download&confirm=t'
+  '2G': 'https://docs.google.com/spreadsheets/d/1zwa8F_WrJS9LXArcNJqmemn7FK96Ycnu/export?format=xlsx',
+  '3G': 'https://docs.google.com/spreadsheets/d/1HCI7IuWjMle50E-TRAz1cbo-yZLaUPF-/export?format=xlsx',
+  '4G': 'https://docs.google.com/spreadsheets/d/13q7CDdLC0Hy4lmgyu9PY-EA-hBgDGFpj/export?format=xlsx',
+  '5G': 'https://docs.google.com/spreadsheets/d/1Ff7NnCsDQl0YdbDxvEEa82rrFtYzojVB/export?format=xlsx'
 };
 const TECHS = ['2G', '3G', '4G', '5G'];
 let rows = [];

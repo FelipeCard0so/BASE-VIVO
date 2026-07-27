@@ -7,12 +7,51 @@ const FILES = {
 const TECHS = ['2G', '3G', '4G', '5G'];
 let rows = [];
 let lastData = null;
+const CACHE_DB = 'base-vivo-cache';
+const CACHE_STORE = 'datasets';
 
 const $ = id => document.getElementById(id);
 const clean = value => value == null || String(value).toLowerCase() === 'nan' ? '' : String(value).trim();
 const col = (row, name) => clean(row[name] ?? row[name.trim()]);
 
-async function loadBases() {
+function openCache() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(CACHE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(CACHE_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function readCache() {
+  try {
+    const db = await openCache();
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get('rows');
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch { return []; }
+}
+async function writeCache(data) {
+  try {
+    const db = await openCache();
+    await new Promise((resolve, reject) => {
+      const request = db.transaction(CACHE_STORE, 'readwrite').objectStore(CACHE_STORE).put(data, 'rows');
+      request.onsuccess = resolve;
+      request.onerror = () => reject(request.error);
+    });
+  } catch { /* cache indisponível não impede a consulta */ }
+}
+async function loadBases(force = false) {
+  if (!force) {
+    const cached = await readCache();
+    if (cached.length) {
+      rows = cached;
+      $('db-status').textContent = `${rows.length.toLocaleString('pt-BR')} registros · cache local`;
+      $('message').textContent = 'Digite o Site e o UF para iniciar a consulta.';
+      return;
+    }
+  }
   $('db-status').textContent = 'Baixando 4 bases...';
   const loaded = [];
   for (const tech of TECHS) {
@@ -21,12 +60,13 @@ async function loadBases() {
     const workbook = XLSX.read(await response.arrayBuffer(), {type: 'array', cellDates: false});
     for (const sheet of workbook.SheetNames) {
       const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheet], {defval: ''});
-      data.forEach(item => rows.push({...item, __tech: sheet === tech ? tech : sheet}));
+      data.forEach(item => rows.push({...item, __tech: tech}));
     }
     loaded.push(tech);
     $('db-status').textContent = `Carregadas: ${loaded.join(', ')}`;
   }
-  rows = rows.filter(row => TECHS.includes(row.__tech) && col(row, '[P]SITE') && col(row, '[P]UF'));
+  rows = rows.filter(row => TECHS.includes(row.__tech) && col(row, '[P]SITE'));
+  await writeCache(rows);
   $('db-status').textContent = `${rows.length.toLocaleString('pt-BR')} registros · ${loaded.join(', ')}`;
   $('message').textContent = 'Digite o Site e o UF para iniciar a consulta.';
 }
@@ -62,6 +102,6 @@ function render(data, site, uf) {
 function historySave(site,uf){const key='base-vivo-history', list=JSON.parse(localStorage.getItem(key)||'[]').filter(x=>x.site!==site||x.uf!==uf);list.unshift({site,uf,ts:new Date().toLocaleString('pt-BR')});localStorage.setItem(key,JSON.stringify(list.slice(0,20)));renderHistory();}
 function renderHistory(){const list=JSON.parse(localStorage.getItem('base-vivo-history')||'[]');$('history').innerHTML=list.length?list.map(x=>`<button class="history-item" data-site="${x.site}" data-uf="${x.uf}">${x.site} · ${x.uf}<small>${x.ts}</small></button>`).join(''):'<span class="empty">Nenhuma consulta.</span>';document.querySelectorAll('.history-item').forEach(b=>b.onclick=()=>{$('site').value=b.dataset.site;$('uf').value=b.dataset.uf;$('search-form').requestSubmit()});}
 $('search-form').onsubmit=e=>{e.preventDefault();const site=$('site').value.trim().toUpperCase(),uf=$('uf').value.trim().toUpperCase(),techs=selectedTechs();const found=rows.filter(r=>col(r,'[P]SITE').toUpperCase()===site&&col(r,'[P]UF').toUpperCase()===uf&&techs.includes(r.__tech));if(!found.length){$('results').innerHTML='';$('message').className='message error';$('message').textContent='Nenhum registro encontrado para os filtros informados.';return;}$('message').className='message';render(consolidate(found),site,uf);historySave(site,uf);};
-$('reload').onclick=async()=>{rows=[];$('results').innerHTML='';try{await loadBases()}catch(e){$('db-status').textContent='Falha ao carregar bases';$('message').className='message error';$('message').textContent=`Não foi possível carregar as planilhas: ${e.message}`;}};
+$('reload').onclick=async()=>{rows=[];$('results').innerHTML='';try{await loadBases(true)}catch(e){$('db-status').textContent='Falha ao carregar bases';$('message').className='message error';$('message').textContent=`Não foi possível carregar as planilhas: ${e.message}`;}};
 $('copy').onclick=async()=>{if(!lastData)return;try{await navigator.clipboard.writeText($('results').innerText);$('copy').textContent='COPIADO';setTimeout(()=>$('copy').textContent='COPIAR',1500)}catch{alert('Não foi possível copiar neste navegador.')}};
 renderHistory();loadBases().catch(e=>{$('db-status').textContent='Falha ao carregar bases';$('message').className='message error';$('message').textContent=`Não foi possível carregar as planilhas: ${e.message}`});

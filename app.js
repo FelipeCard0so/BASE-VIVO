@@ -13,6 +13,16 @@ const CACHE_STORE = 'datasets';
 const $ = id => document.getElementById(id);
 const clean = value => value == null || String(value).toLowerCase() === 'nan' ? '' : String(value).trim();
 const col = (row, name) => clean(row[name] ?? row[name.trim()]);
+const TARGETS_4G = {
+  '700': {'20/4':['DL > 40 Mbps','UL > 15 Mbps'],'20/2':['DL > 30 Mbps','UL > 15 Mbps'],'15/4':['DL > 30 Mbps','UL > 10 Mbps'],'15/2':['DL > 25 Mbps','UL > 10 Mbps'],'10/4':['DL > 25 Mbps','UL >  5 Mbps'],'10/2':['DL > 20 Mbps','UL >  5 Mbps']},
+  '1800': {'20/4':['DL > 40 Mbps','UL > 15 Mbps'],'20/2':['DL > 30 Mbps','UL > 15 Mbps'],'15/4':['DL > 30 Mbps','UL > 10 Mbps'],'15/2':['DL > 25 Mbps','UL > 10 Mbps'],'10/4':['DL > 25 Mbps','UL >  5 Mbps'],'10/2':['DL > 20 Mbps','UL >  5 Mbps']},
+  '2100': {'20/4':['DL > 40 Mbps','UL > 15 Mbps'],'20/2':['DL > 30 Mbps','UL > 15 Mbps'],'15/4':['DL > 30 Mbps','UL > 10 Mbps'],'15/2':['DL > 25 Mbps','UL > 10 Mbps'],'10/4':['DL > 25 Mbps','UL >  5 Mbps'],'10/2':['DL > 20 Mbps','UL >  5 Mbps']},
+  '2600': {'20/4':['DL > 40 Mbps','UL > 15 Mbps'],'20/2':['DL > 30 Mbps','UL > 15 Mbps'],'15/4':['DL > 30 Mbps','UL > 10 Mbps'],'15/2':['DL > 25 Mbps','UL > 10 Mbps'],'10/4':['DL > 25 Mbps','UL >  5 Mbps'],'10/2':['DL > 20 Mbps','UL >  5 Mbps']},
+  '2300': {'tdd':['DL > 20 Mbps','UL >  2 Mbps']}
+};
+const TARGETS_5G = {'3500':['DL > 200 Mbps','UL > 30 Mbps'],'2300':['DL >  80 Mbps','UL > 10 Mbps'],'2100':['DL > 200 Mbps','UL > 30 Mbps']};
+function target4g(banda,bw,mimo){for(const freq of Object.keys(TARGETS_4G)){if(!banda.includes(freq))continue;const table=TARGETS_4G[freq];if(freq==='2300')return table.tdd;const mimoKey=(Number(mimo)||0)>=3?4:2;return table[`${Math.round(Number(bw)||0)}/${mimoKey}`]||null;}return null;}
+function target5g(banda){for(const freq of Object.keys(TARGETS_5G))if(banda.includes(freq))return TARGETS_5G[freq];return null;}
 
 function openCache() {
   return new Promise((resolve, reject) => {
@@ -78,7 +88,7 @@ function valueFor(row, field, tech) {
 }
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
 function consolidate(found) {
-  const result = {cidade:'',bairro:'',endereco:'',latitude:'',longitude:'',tech:{}};
+  const result = {cidade:'',bairro:'',endereco:'',latitude:'',longitude:'',tech:{},targets:[]};
   for (const tech of TECHS) {
     const techRows = found.filter(row => row.__tech === tech);
     result.tech[tech] = {bands:[], azimuth:[], codes:[], rows:techRows};
@@ -89,14 +99,18 @@ function consolidate(found) {
       if (banda && !/iot/i.test(banda) && !result.tech[tech].bands.some(x=>x.banda===banda&&x.earfcn===earfcn)) result.tech[tech].bands.push({banda,earfcn});
       const az=valueFor(row,'[P]AZIMUTH',tech); if(az&&!result.tech[tech].azimuth.includes(az)) result.tech[tech].azimuth.push(az);
       const code=tech==='2G'?col(row,'[P]BCCH'):tech==='3G'?col(row,'[P]PSC'):col(row,'[P]PCI'); if(code&&!result.tech[tech].codes.includes(code)) result.tech[tech].codes.push(code);
+      if(tech==='4G' && banda && !/iot/i.test(banda)){const bw=col(row,'[P]BANDWIDTH'), mimo=col(row,'[P]MIMO'), target=target4g(banda,bw,mimo);if(target&&!result.targets.some(x=>x.tech===tech&&x.label===`${banda} / ${earfcn}`))result.targets.push({tech,label:`${banda}${earfcn?` / ${earfcn}`:''}`,bw:bw||'—',mimo:mimo?`${Number(mimo)>=3?4:2}x${Number(mimo)>=3?4:2}`:'—',dl:target[0],ul:target[1]});}
+      if(tech==='5G' && banda){const target=target5g(banda);if(target&&!result.targets.some(x=>x.tech===tech&&x.label===`${banda} / ${earfcn}`))result.targets.push({tech,label:`${banda}${earfcn?` / ${earfcn}`:''}`,bw:'—',mimo:'—',dl:target[0],ul:target[1]});}
     });
   }
   return result;
 }
 function item(label, value) { return `<div class="item"><small>${label}</small><strong>${value || '—'}</strong></div>`; }
 function render(data, site, uf) {
-  lastData=data; $('copy').disabled=false; let html=`<div class="card"><h3>IDENTIFICAÇÃO DO SITE</h3><div class="grid">${item('SITE',site)}${item('UF',uf)}${item('CIDADE',data.cidade)}${item('BAIRRO',data.bairro)}${item('ENDEREÇO',data.endereco)}${item('LATITUDE',data.latitude)}${item('LONGITUDE',data.longitude)}</div></div>`;
-  for(const tech of selectedTechs()){const t=data.tech[tech]; if(!t.rows.length)continue; const bands=t.bands.map(x=>`${x.banda}${x.earfcn?` / ${x.earfcn}`:''}`).join('<br>'); html+=`<div class="card tech-section"><h3>${tech}</h3><div class="grid">${item('BANDA / EARFCN',bands)}${item('AZIMUTH',t.azimuth.join(', '))}${item(tech==='2G'?'BCCH':tech==='3G'?'PSC':'PCI',t.codes.join(', '))}</div></div>`;}
+  lastData=data; $('copy').disabled=false; let html=`<div class="card"><h3>SITE: ${site} - ${uf}</h3><div class="grid identity">${item('CIDADE',data.cidade)}${item('BAIRRO',data.bairro)}${item('ENDEREÇO',data.endereco)}${item('COORDENADAS',data.latitude&&data.longitude?`${data.latitude} / ${data.longitude}`:'—')}</div></div>`;
+  html+='<div class="card bands"><h3>BANDA DE OPERAÇÃO / EARFCN</h3><div class="band-grid">';for(const tech of selectedTechs()){const t=data.tech[tech];if(t.rows.length)html+=`<div class="band-column"><b>${tech}</b>${t.bands.map(x=>`<span>${x.banda}${x.earfcn?` / <em>${x.earfcn}</em>`:''}</span>`).join('')}</div>`;}html+='</div></div>';
+  const active=selectedTechs().filter(tech=>data.tech[tech].rows.length), maxCodes=Math.max(...active.map(tech=>data.tech[tech].codes.length),0), maxAz=Math.max(...active.map(tech=>data.tech[tech].azimuth.length),0);html+='<div class="section-title">CÓDIGOS DE CÉLULA / AZIMUTH</div><div class="boxes"><div class="card table-box"><h3>CÓDIGOS DE CÉLULA</h3><table><thead><tr>'+active.map(t=>`<th>${t==='2G'?'BCCH':t==='3G'?'PSCs':'PCIs'}<br>${t}</th>`).join('')+'</tr></thead><tbody>'+Array.from({length:maxCodes},(_,i)=>`<tr>${active.map(t=>`<td>${data.tech[t].codes[i]||''}</td>`).join('')}</tr>`).join('')+'</tbody></table></div><div class="card table-box"><h3>AZIMUTH</h3><table><thead><tr>'+active.map(t=>`<th>${t}</th>`).join('')+'</tr></thead><tbody>'+Array.from({length:Math.max(maxAz,maxCodes)},(_,i)=>`<tr>${active.map(t=>`<td>${data.tech[t].azimuth[i]||''}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
+  if(data.targets.length)html+='<div class="card target-card"><h3>BANDWIDTH / TARGET VIVO</h3><div class="target-scroll"><table><thead><tr><th>TECH</th><th>BANDA</th><th>BW</th><th>MIMO</th><th>DL TARGET</th><th>UL TARGET</th></tr></thead><tbody>'+data.targets.map(x=>`<tr><td>${x.tech}</td><td>${x.label}</td><td>${x.bw}</td><td>${x.mimo}</td><td class="dl">${x.dl}</td><td class="ul">${x.ul}</td></tr>`).join('')+'</tbody></table></div></div>';
   $('results').innerHTML=html; $('message').textContent=`${site} · ${uf} · consulta concluída`;
 }
 function historySave(site,uf){const key='base-vivo-history', list=JSON.parse(localStorage.getItem(key)||'[]').filter(x=>x.site!==site||x.uf!==uf);list.unshift({site,uf,ts:new Date().toLocaleString('pt-BR')});localStorage.setItem(key,JSON.stringify(list.slice(0,20)));renderHistory();}

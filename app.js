@@ -4,6 +4,12 @@ const FILES = {
   '4G': 'https://docs.google.com/spreadsheets/d/13q7CDdLC0Hy4lmgyu9PY-EA-hBgDGFpj/export?format=xlsx',
   '5G': 'https://docs.google.com/spreadsheets/d/1Ff7NnCsDQl0YdbDxvEEa82rrFtYzojVB/export?format=xlsx'
 };
+const SHEETS = {
+  '2G': '1zwa8F_WrJS9LXArcNJqmemn7FK96Ycnu',
+  '3G': '1HCI7IuWjMle50E-TRAz1cbo-yZLaUPF-',
+  '4G': '13q7CDdLC0Hy4lmgyu9PY-EA-hBgDGFpj',
+  '5G': '1Ff7NnCsDQl0YdbDxvEEa82rrFtYzojVB'
+};
 const TECHS = ['2G', '3G', '4G', '5G'];
 let rows = [];
 let lastData = null;
@@ -80,6 +86,43 @@ async function loadBases(force = false) {
   $('db-status').textContent = `${rows.length.toLocaleString('pt-BR')} registros · ${loaded.join(', ')}`;
   $('message').textContent = 'Digite o Site e o UF para iniciar a consulta.';
 }
+function parseGviz(text) {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end < start) throw new Error('resposta inválida do Google Sheets');
+  return JSON.parse(text.slice(start, end + 1));
+}
+async function querySheet(tech, site, uf) {
+  const query = encodeURIComponent(`select * where A = '${site.replace(/'/g, "''")}'`);
+  const url = `https://docs.google.com/spreadsheets/d/${SHEETS[tech]}/gviz/tq?tqx=out:json&sheet=Export&tq=${query}`;
+  const response = await fetch(url, {cache: 'no-store'});
+  if (!response.ok) throw new Error(`${tech}: consulta HTTP ${response.status}`);
+  const payload = parseGviz(await response.text());
+  const columns = payload.table.cols.map(column => column.label || '');
+  return payload.table.rows.map(item => {
+    const row = {__tech: tech};
+    columns.forEach((name, index) => { if (name) row[name] = item.c[index]?.v ?? ''; });
+    return row;
+  }).filter(row => col(row, '[P]UF').toUpperCase() === uf);
+}
+async function queryRemote(site, uf, techs) {
+  const key = `query:${site}:${uf}:${techs.join(',')}`;
+  try {
+    const db = await openCache();
+    const cached = await new Promise((resolve, reject) => {
+      const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    if (cached?.length) return cached;
+  } catch { /* consulta remota continua normalmente */ }
+  const result = (await Promise.all(techs.map(tech => querySheet(tech, site, uf)))).flat();
+  try {
+    const db = await openCache();
+    db.transaction(CACHE_STORE, 'readwrite').objectStore(CACHE_STORE).put(result, key);
+  } catch { /* cache indisponível não impede a consulta */ }
+  return result;
+}
 
 function selectedTechs() { return [...document.querySelectorAll('.techs input:checked')].map(input => input.value); }
 function valueFor(row, field, tech) {
@@ -115,7 +158,7 @@ function render(data, site, uf) {
 }
 function historySave(site,uf){const key='base-vivo-history', list=JSON.parse(localStorage.getItem(key)||'[]').filter(x=>x.site!==site||x.uf!==uf);list.unshift({site,uf,ts:new Date().toLocaleString('pt-BR')});localStorage.setItem(key,JSON.stringify(list.slice(0,20)));renderHistory();}
 function renderHistory(){const list=JSON.parse(localStorage.getItem('base-vivo-history')||'[]');$('history').innerHTML=list.length?list.map(x=>`<button class="history-item" data-site="${x.site}" data-uf="${x.uf}">${x.site} · ${x.uf}<small>${x.ts}</small></button>`).join(''):'<span class="empty">Nenhuma consulta.</span>';document.querySelectorAll('.history-item').forEach(b=>b.onclick=()=>{$('site').value=b.dataset.site;$('uf').value=b.dataset.uf;$('search-form').requestSubmit()});}
-$('search-form').onsubmit=e=>{e.preventDefault();const site=$('site').value.trim().toUpperCase(),uf=$('uf').value.trim().toUpperCase(),techs=selectedTechs();const found=rows.filter(r=>col(r,'[P]SITE').toUpperCase()===site&&col(r,'[P]UF').toUpperCase()===uf&&techs.includes(r.__tech));if(!found.length){$('results').innerHTML='';$('message').className='message error';$('message').textContent='Nenhum registro encontrado para os filtros informados.';return;}$('message').className='message';render(consolidate(found),site,uf);historySave(site,uf);};
-$('reload').onclick=async()=>{rows=[];$('results').innerHTML='';try{await loadBases(true)}catch(e){$('db-status').textContent='Falha ao carregar bases';$('message').className='message error';$('message').textContent=`Não foi possível carregar as planilhas: ${e.message}`;}};
+$('search-form').onsubmit=async e=>{e.preventDefault();const site=$('site').value.trim().toUpperCase(),uf=$('uf').value.trim().toUpperCase(),techs=selectedTechs();if(!site||!uf||!techs.length)return;$('message').className='message';$('message').textContent='Consultando as bases...';try{const found=await queryRemote(site,uf,techs);if(!found.length){$('results').innerHTML='';$('message').className='message error';$('message').textContent='Nenhum registro encontrado para os filtros informados.';return;}render(consolidate(found),site,uf);historySave(site,uf);}catch(error){$('message').className='message error';$('message').textContent=`Não foi possível consultar as bases: ${error.message}`;}};
+$('reload').onclick=async()=>{try{const db=await openCache();db.transaction(CACHE_STORE,'readwrite').objectStore(CACHE_STORE).clear();}catch{}rows=[];$('results').innerHTML='';$('db-status').textContent='Cache limpo · próxima consulta será atualizada';$('message').textContent='Digite o Site e o UF para iniciar a consulta.';};
 $('copy').onclick=async()=>{if(!lastData)return;try{await navigator.clipboard.writeText($('results').innerText);$('copy').textContent='COPIADO';setTimeout(()=>$('copy').textContent='COPIAR',1500)}catch{alert('Não foi possível copiar neste navegador.')}};
-renderHistory();loadBases().catch(e=>{$('db-status').textContent='Falha ao carregar bases';$('message').className='message error';$('message').textContent=`Não foi possível carregar as planilhas: ${e.message}`});
+renderHistory();rows=[];$('db-status').textContent='Consulta online · cache por site/UF';$('message').textContent='Digite o Site e o UF para iniciar a consulta.';

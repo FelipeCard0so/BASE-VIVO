@@ -1,46 +1,130 @@
 <!doctype html>
+<!--
+  ============================================================================
+  BASE VIVO — index.html
+  Projeto: Consulta de sites Vivo (2G/3G/4G/5G)
+  Autor:   Felipe Cardoso
+
+  Estrutura geral da página (top -> bottom):
+    1. <head>   -> metadados e import do CSS
+    2. <header> -> topbar com formulário de busca
+    3. <main>   -> conteúdo (resultado da consulta) + sidebar (histórico)
+    4. <footer> -> rodapé
+    5. <script> -> motor do banco (sql.js/WASM) + lógica da aplicação (app.js)
+
+  Convenção adotada: IDs (id="...") marcam elementos que são manipulados
+  via JavaScript (app.js). Classes (class="...") controlam apenas
+  aparência/estilo (ver style.css). Sempre que for mexer em algum id
+  abaixo, procure a referência correspondente em app.js antes de alterar.
+  ============================================================================
+-->
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BASE VIVO</title>
+
+  <!-- Folha de estilos única do projeto (ver seções comentadas em styles.css) -->
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+  <!-- ==========================================================================
+       TOPBAR — cabeçalho fixo com logo e formulário de consulta
+       Classe .topbar / .searchbar / .techs -> estilizadas em styles.css (seção 3)
+       ========================================================================== -->
   <header class="topbar">
+
+    <!-- Nome/logo da aplicação -->
     <div class="brand">BASE VIVO</div>
+
+    <!-- Formulário de busca. O "submit" deste form é interceptado pelo
+         app.js (id="search-form") para disparar a consulta na base local. -->
     <form id="search-form" class="searchbar">
+
+      <!-- Campo obrigatório: nome do Site (ex: ADV, BMO, JCO...) -->
       <label>Site <input id="site" autocomplete="off" required></label>
+
+      <!-- Campo obrigatório: sigla da UF (limitado a 2 caracteres, ex: MG, SP) -->
       <label>UF <input id="uf" maxlength="2" autocomplete="off" required></label>
+
+      <!-- Filtro de tecnologias a incluir na consulta.
+           Os "value" (2G/3G/4G/5G) são lidos pelo app.js para montar o filtro.
+           Todos vêm marcados (checked) por padrão. -->
       <div class="techs" aria-label="Tecnologias">
         <label><input type="checkbox" value="2G" checked> 2G</label>
         <label><input type="checkbox" value="3G" checked> 3G</label>
         <label><input type="checkbox" value="4G" checked> 4G</label>
         <label><input type="checkbox" value="5G" checked> 5G</label>
       </div>
+
+      <!-- Botão de submit do formulário -->
       <button type="submit">CONSULTAR</button>
     </form>
   </header>
 
+
+  <!-- ==========================================================================
+       MAIN — corpo da aplicação, dividido em .content (resultado) e .sidebar
+       Classe .layout -> grid de 2 colunas (ver styles.css, seção 5)
+       ========================================================================== -->
   <main class="layout">
+
+    <!-- ------------------------------------------------------------------------
+         CONTEÚDO PRINCIPAL — exibe o resultado da consulta ao site
+         ------------------------------------------------------------------------ -->
     <section class="content">
+
+      <!-- Cabeçalho da área de resultado: título + botão de copiar -->
       <div class="result-heading">
         <h1>RESULTADO</h1>
+        <!-- Começa desabilitado; app.js deve habilitar quando houver
+             resultado para copiar -->
         <button id="copy" class="secondary" disabled>COPIAR</button>
       </div>
+
+      <!-- Mensagem de status/feedback (carregando, erro, "sem resultados" etc).
+           Texto e classe (.message / .message.error) são trocados via app.js. -->
       <p id="message" class="message">Carregando as bases de dados...</p>
+
+      <!-- Container onde os cards de resultado (Site, Bandas, PCIs, Azimuth,
+           Bandwidth/Target) são injetados dinamicamente pelo app.js -->
       <div id="results" class="results"></div>
     </section>
+
+    <!-- ------------------------------------------------------------------------
+         SIDEBAR — status da base local + histórico de consultas
+         ------------------------------------------------------------------------ -->
     <aside class="sidebar">
       <h2>BASE DE DADOS</h2>
+
+      <!-- Status da base (ex: "Base local pronta", "Inicializando...") -->
       <p id="db-status">Inicializando...</p>
+
+      <!-- Botão para limpar cache/recarregar a base local -->
       <button id="reload" class="secondary">↻ Limpar cache</button>
+
       <hr>
+
       <h2>HISTÓRICO</h2>
+
+      <!-- Lista de consultas recentes, populada dinamicamente pelo app.js
+           (ver .history-item em styles.css, seção 10) -->
       <div id="history"></div>
     </aside>
   </main>
+
+  <!-- Rodapé fixo -->
   <footer>CRIADO POR: FELIPE CARDOSO</footer>
+
+  <!-- ==========================================================================
+       SCRIPTS
+       - sql-wasm.js: motor SQLite compilado para WebAssembly (lib externa,
+         via CDN), usado para consultar a base local diretamente no navegador.
+       - app.js: lógica da aplicação (montagem da query, renderização dos
+         cards de resultado, histórico, cache etc). Deve ser carregado
+         DEPOIS do sql-wasm.js, pois depende dele.
+       ========================================================================== -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
   <script src="app.js"></script>
 </body>

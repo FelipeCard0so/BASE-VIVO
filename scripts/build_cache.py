@@ -1,6 +1,8 @@
 import io
 import sqlite3
+import time
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 import openpyxl
@@ -12,6 +14,10 @@ FILES = {
     "4G": "13q7CDdLC0Hy4lmgyu9PY-EA-hBgDGFpj",
     "5G": "1Ff7NnCsDQl0YdbDxvEEa82rrFtYzojVB",
 }
+DOWNLOAD_URLS = (
+    "https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t",
+    "https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx",
+)
 FIELDS = [
     "site", "uf", "banda", "azimuth", "bcch", "psc", "pci", "bandwidth",
     "cidade", "bairro", "endereco", "earfcn", "latitude", "longitude", "mimo",
@@ -34,6 +40,22 @@ def text(value):
     return "" if value.lower() == "nan" else value
 
 
+def download_workbook(file_id):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    last_error = None
+    for url_template in DOWNLOAD_URLS:
+        url = url_template.format(file_id=file_id)
+        for attempt in range(3):
+            try:
+                request = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    return response.read()
+            except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as error:
+                last_error = error
+                time.sleep(2 * (attempt + 1))
+    raise last_error
+
+
 def build():
     db_path = ROOT / "rf_cache.db"
     if db_path.exists():
@@ -42,8 +64,7 @@ def build():
     connection.execute("CREATE TABLE rf (id INTEGER PRIMARY KEY, site TEXT, uf TEXT, tech TEXT, banda TEXT, azimuth TEXT, bcch TEXT, psc TEXT, pci TEXT, bandwidth TEXT, cidade TEXT, bairro TEXT, endereco TEXT, earfcn TEXT, latitude TEXT, longitude TEXT, mimo TEXT)")
     insert = "INSERT INTO rf (site,uf,tech,banda,azimuth,bcch,psc,pci,bandwidth,cidade,bairro,endereco,earfcn,latitude,longitude,mimo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     for tech, file_id in FILES.items():
-        url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx"
-        workbook = openpyxl.load_workbook(io.BytesIO(urllib.request.urlopen(url).read()), read_only=True, data_only=True)
+        workbook = openpyxl.load_workbook(io.BytesIO(download_workbook(file_id)), read_only=True, data_only=True)
         sheet = workbook[workbook.sheetnames[0]]
         iterator = sheet.iter_rows(values_only=True)
         headers = [text(value) for value in next(iterator)]

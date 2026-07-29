@@ -1,5 +1,529 @@
-:root{--bg:#fff;--bg2:#f5f7fa;--bg3:#eef1f5;--box:#f8fafb;--border:#d0d7de;--accent:#00bcd4;--accent-dark:#0097a7;--success:#2da44e;--danger:#cf222e;--text:#1f2328;--muted:#57606a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,sans-serif}.topbar{display:flex;align-items:center;gap:24px;padding:12px 18px;background:var(--bg2);border-bottom:1px solid var(--border)}.brand{font-size:20px;font-weight:700;white-space:nowrap}.searchbar{display:flex;align-items:end;gap:10px;flex:1;flex-wrap:wrap}.searchbar label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}input{border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text);padding:8px 9px;font:14px Arial}.searchbar input[type=text],#site{width:120px}.searchbar #uf{width:58px;text-transform:uppercase}.techs{display:flex;align-items:center;gap:8px;height:34px}.techs label{flex-direction:row;align-items:center}.techs input{accent-color:var(--accent)}button{border:0;border-radius:4px;background:var(--accent);color:#fff;font-weight:700;padding:9px 14px;cursor:pointer}button:hover{background:var(--accent-dark)}button:disabled{opacity:.55;cursor:not-allowed}.secondary{background:var(--bg3);color:var(--text);font-weight:400}.secondary:hover{background:var(--border)}.layout{display:grid;grid-template-columns:minmax(0,1fr) 220px;min-height:calc(100vh - 105px)}.content{padding:18px;min-width:0}.sidebar{padding:18px 14px;background:var(--bg2);border-left:1px solid var(--border)}h1,h2{margin:0;font-size:13px;letter-spacing:.04em}h2{color:var(--muted);font-size:11px}.result-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px}.message{color:var(--muted);margin:14px 0}.message.error{color:var(--danger)}.results{display:grid;gap:12px}.card{border:1px solid var(--border);border-radius:6px;background:var(--box);padding:14px}.card h3{margin:0 0 10px;font-size:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px}.item{padding:7px 8px;background:#fff;border-radius:4px;min-width:0}.item small{display:block;color:var(--muted);font-size:10px;margin-bottom:3px}.item strong{font-size:13px;word-break:break-word}.tech-section{margin-top:12px}.tech-title{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px}.empty{color:var(--muted);font-size:13px}.history-item{display:block;width:100%;text-align:left;margin-top:6px;padding:7px 8px;background:#fff;color:var(--text);font-weight:400}.history-item small{display:block;color:var(--muted);margin-top:2px}hr{border:0;border-top:1px solid var(--border);margin:16px 0}footer{height:28px;padding:8px 14px;background:var(--bg2);color:#aaa;font-size:10px;text-align:right}
-@media(max-width:720px){.topbar{display:block;padding:12px}.brand{margin-bottom:12px}.searchbar{gap:8px}.searchbar button{width:100%;margin-top:2px}.layout{display:block;min-height:0}.sidebar{border-left:0;border-top:1px solid var(--border)}.content{padding:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:11px}}
-.identity{grid-template-columns:repeat(4,minmax(0,1fr))}.bands{margin-top:10px}.band-grid{display:flex;gap:26px;flex-wrap:wrap}.band-column{min-width:90px}.band-column b{display:block;color:var(--muted);font-size:11px;border-bottom:1px solid var(--border);padding-bottom:5px}.band-column span{display:block;margin-top:6px;font-size:12px}.band-column em{font-style:normal;color:#00a8c0}.section-title{margin:13px 0 5px;padding-bottom:6px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700}.boxes{display:flex;gap:12px;align-items:flex-start}.table-box{min-width:280px}.table-box table,.target-card table{border-collapse:collapse;width:100%;font-size:12px}.table-box th,.table-box td,.target-card th,.target-card td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap}.table-box th,.target-card th{color:var(--muted);font-weight:400}.target-card{margin-top:10px}.target-card td.dl{color:var(--success)}.target-card td.ul{color:#00a8c0}.target-scroll{overflow-x:auto}@media(max-width:720px){.identity{grid-template-columns:repeat(2,minmax(0,1fr))}.boxes{display:block}.table-box{min-width:0;margin-top:10px}}
-.maps-link{display:inline-block;margin-top:7px;margin-left:12px;padding:5px 8px;border-radius:4px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;text-decoration:none}.maps-link:hover{background:var(--accent-dark);text-decoration:none}
+/* ============================================================================
+   BASE VIVO — FOLHA DE ESTILOS (style.css)
+   Projeto: Consulta de sites Vivo (2G/3G/4G/5G)
+   Autor:   Felipe Cardoso
+   Convenção adotada: comentários em blocos numerados por seção,
+   nomenclatura de classes em kebab-case, variáveis CSS centralizadas
+   no :root para permitir troca de tema em um único lugar.
+   ============================================================================ */
+
+
+/* ============================================================================
+   1. DESIGN TOKENS (VARIÁVEIS GLOBAIS)
+   ----------------------------------------------------------------------------
+   Centraliza todas as cores do projeto. Qualquer mudança de paleta/tema
+   deve ser feita AQUI, nunca direto nas regras abaixo, para manter
+   consistência visual em toda a aplicação.
+   ============================================================================ */
+:root{
+  --bg: #fff;             /* fundo principal da página */
+  --bg2: #f5f7fa;          /* fundo secundário (topbar, sidebar) */
+  --bg3: #eef1f5;          /* fundo terciário (botão secundário) */
+  --box: #f8fafb;          /* fundo dos cards de resultado */
+  --border: #d0d7de;       /* cor padrão de bordas/divisores */
+  --accent: #00bcd4;       /* cor de destaque (botões, links, ícones) */
+  --accent-dark: #0097a7;  /* variação escura do destaque (estado hover) */
+  --success: #2da44e;      /* cor para valores positivos (ex: DL target) */
+  --danger: #cf222e;       /* cor para mensagens de erro */
+  --text: #1f2328;         /* cor de texto principal */
+  --muted: #57606a;        /* cor de texto secundário/rótulos */
+}
+
+
+/* ============================================================================
+   2. RESET E ESTILOS BASE
+   ----------------------------------------------------------------------------
+   Normalizações globais aplicadas a todos os elementos e ao <body>.
+   ============================================================================ */
+*{
+  box-sizing: border-box; /* padding/border não somam à largura definida */
+}
+
+body{
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px Arial, sans-serif;
+}
+
+
+/* ============================================================================
+   3. TOPBAR (CABEÇALHO / BARRA DE BUSCA)
+   ----------------------------------------------------------------------------
+   Área fixa no topo contendo o logo (.brand) e o formulário de consulta
+   (.searchbar), com os checkboxes de tecnologia (.techs).
+   ============================================================================ */
+.topbar{
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 18px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand{
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap; /* evita quebra do nome da marca em telas estreitas */
+}
+
+/* Container do formulário de busca (campos + botão) */
+.searchbar{
+  display: flex;
+  align-items: end; /* alinha inputs e botão pela base, compensando os <label> */
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.searchbar label{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Estilo padrão de todo <input> da aplicação */
+input{
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 9px;
+  font: 14px Arial;
+}
+
+/* Campo "Site": largura fixa reduzida */
+.searchbar input[type=text],
+#site{
+  width: 120px;
+}
+
+/* Campo "UF": largura menor + texto sempre maiúsculo (sigla de estado) */
+.searchbar #uf{
+  width: 58px;
+  text-transform: uppercase;
+}
+
+/* Grupo de checkboxes de tecnologia (2G/3G/4G/5G) */
+.techs{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px; /* alinha visualmente com a altura dos inputs de texto */
+}
+
+.techs label{
+  flex-direction: row; /* sobrescreve .searchbar label (que é column) */
+  align-items: center;
+}
+
+.techs input{
+  accent-color: var(--accent); /* cor do checkbox marcado */
+}
+
+
+/* ============================================================================
+   4. BOTÕES
+   ----------------------------------------------------------------------------
+   Botão padrão (ex: "CONSULTAR") e variação secundária (ex: "Limpar cache").
+   ============================================================================ */
+button{
+  border: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+button:hover{
+  background: var(--accent-dark);
+}
+
+button:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Variação de botão com menor destaque visual (ex: ações auxiliares) */
+.secondary{
+  background: var(--bg3);
+  color: var(--text);
+  font-weight: 400;
+}
+
+.secondary:hover{
+  background: var(--border);
+}
+
+
+/* ============================================================================
+   5. LAYOUT PRINCIPAL (CONTEÚDO + SIDEBAR)
+   ----------------------------------------------------------------------------
+   Grid de 2 colunas: área de conteúdo (resultado) à esquerda e
+   sidebar (histórico/status da base) à direita.
+   ============================================================================ */
+.layout{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 220px; /* conteúdo flexível + sidebar fixa */
+  min-height: calc(100vh - 105px); /* desconta altura de topbar + footer */
+}
+
+.content{
+  padding: 18px;
+  min-width: 0; /* evita overflow em grids/flex filhos */
+}
+
+.sidebar{
+  padding: 18px 14px;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+}
+
+
+/* ============================================================================
+   6. TIPOGRAFIA DE TÍTULOS
+   ============================================================================ */
+h1, h2{
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+
+h2{
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Cabeçalho da seção "RESULTADO" (título + botão copiar) */
+.result-heading{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+
+/* ============================================================================
+   7. MENSAGENS DE ESTADO (feedback ao usuário)
+   ============================================================================ */
+.message{
+  color: var(--muted);
+  margin: 14px 0;
+}
+
+.message.error{
+  color: var(--danger);
+}
+
+
+/* ============================================================================
+   8. CARDS DE RESULTADO
+   ----------------------------------------------------------------------------
+   Estrutura genérica de card usada para exibir os blocos de dados
+   retornados pela consulta (Site, Banda, Códigos de célula, etc.).
+   ============================================================================ */
+.results{
+  display: grid;
+  gap: 12px;
+}
+
+.card{
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--box);
+  padding: 14px;
+}
+
+.card h3{
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+/* Grid interno do card (ex: Cidade, Bairro, Endereço, Coordenadas) */
+.grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px,1fr));
+  gap: 8px;
+}
+
+.item{
+  padding: 7px 8px;
+  background: #fff;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.item small{
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+.item strong{
+  font-size: 13px;
+  word-break: break-word; /* evita estourar o card com coordenadas longas */
+}
+
+
+/* ============================================================================
+   9. SUBSEÇÕES DE TECNOLOGIA (PCIs, Azimuth, etc.)
+   ============================================================================ */
+.tech-section{
+  margin-top: 12px;
+}
+
+.tech-title{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.empty{
+  color: var(--muted);
+  font-size: 13px;
+}
+
+
+/* ============================================================================
+   10. HISTÓRICO DE CONSULTAS (SIDEBAR)
+   ============================================================================ */
+.history-item{
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 6px;
+  padding: 7px 8px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.history-item small{
+  display: block;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+
+/* ============================================================================
+   11. DIVISOR E RODAPÉ
+   ============================================================================ */
+hr{
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+footer{
+  height: 28px;
+  padding: 8px 14px;
+  background: var(--bg2);
+  color: #aaa;
+  font-size: 10px;
+  text-align: right;
+}
+
+
+/* ============================================================================
+   12. RESPONSIVIDADE — BREAKPOINT MOBILE (até 720px)
+   ----------------------------------------------------------------------------
+   Ajustes gerais de layout para telas estreitas: topbar empilhada,
+   botão de busca em largura total e layout de 2 colunas vira 1 coluna.
+   ============================================================================ */
+@media (max-width: 720px){
+  .topbar{
+    display: block;
+    padding: 12px;
+  }
+  .brand{
+    margin-bottom: 12px;
+  }
+  .searchbar{
+    gap: 8px;
+  }
+  .searchbar button{
+    width: 100%;
+    margin-top: 2px;
+  }
+  .layout{
+    display: block;
+    min-height: 0;
+  }
+  .sidebar{
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .content{
+    padding: 12px;
+  }
+  .grid{
+    grid-template-columns: repeat(2, minmax(0,1fr)); /* 4 colunas -> 2 no mobile */
+  }
+  .card{
+    padding: 11px;
+  }
+}
+
+
+/* ============================================================================
+   13. CARD "SITE" (IDENTIDADE) E BANDAS DE OPERAÇÃO
+   ----------------------------------------------------------------------------
+   Variação do .grid usada especificamente no card de identidade do site
+   (Cidade, Bairro, Endereço, Coordenadas) e no bloco de bandas por
+   tecnologia (ex: 4G > Z-700/9510).
+   ============================================================================ */
+.identity{
+  grid-template-columns: repeat(4, minmax(0,1fr)); /* 4 colunas fixas no desktop */
+}
+
+.bands{
+  margin-top: 10px;
+}
+
+.band-grid{
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.band-column{
+  min-width: 90px;
+}
+
+.band-column b{
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+}
+
+.band-column span{
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.band-column em{
+  font-style: normal; /* remove itálico padrão do <em>, mantém só a cor */
+  color: #00a8c0;
+}
+
+
+/* ============================================================================
+   14. TÍTULOS DE SEÇÃO INTERNOS (ex: "CÓDIGOS DE CÉLULA / AZIMUTH")
+   ============================================================================ */
+.section-title{
+  margin: 13px 0 5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* ============================================================================
+   15. TABELAS (Códigos de célula / Azimuth / Bandwidth-Target)
+   ----------------------------------------------------------------------------
+   .boxes agrupa lado a lado as tabelas de "Códigos de célula" e "Azimuth".
+   .table-box e .target-card compartilham o mesmo estilo base de tabela.
+   ============================================================================ */
+.boxes{
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.table-box{
+  min-width: 280px;
+}
+
+/* Estilo de tabela compartilhado entre .table-box e .target-card */
+.table-box table,
+.target-card table{
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.table-box th,
+.table-box td,
+.target-card th,
+.target-card td{
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap; /* evita quebra de linha em valores curtos (PCI, EARFCN etc) */
+}
+
+.table-box th,
+.target-card th{
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* Card "BANDWIDTH / TARGET VIVO" */
+.target-card{
+  margin-top: 10px;
+}
+
+.target-card td.dl{
+  color: var(--success); /* destaca valor de Download Target em verde */
+}
+
+.target-card td.ul{
+  color: #00a8c0; /* destaca valor de Upload Target em azul-ciano */
+}
+
+.target-scroll{
+  overflow-x: auto; /* permite rolagem horizontal da tabela em telas pequenas */
+}
+
+/* Responsividade específica dos blocos acima (mobile) */
+@media (max-width: 720px){
+  .identity{
+    grid-template-columns: repeat(2, minmax(0,1fr)); /* 4 -> 2 colunas */
+  }
+  .boxes{
+    display: block; /* empilha "Códigos de célula" e "Azimuth" no mobile */
+  }
+  .table-box{
+    min-width: 0;
+    margin-top: 10px;
+  }
+}
+
+
+/* ============================================================================
+   16. BOTÃO "VER NO GOOGLE MAPS"
+   ----------------------------------------------------------------------------
+   Botão-link exibido ao lado do texto de coordenadas, dentro do card
+   de identidade do site (ver seção 8/13).
+   AJUSTE (28/07/2026): adicionado margin-left para separar visualmente
+   o botão do texto das coordenadas (antes ficavam colados).
+   ============================================================================ */
+.maps-link{
+  display: inline-block;
+  margin-top: 7px;
+  margin-left: 12px; /* espaçamento entre coordenadas e o botão (~1 tab) */
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.maps-link:hover{
+  background: var(--accent-dark);
+  text-decoration: none;
+}

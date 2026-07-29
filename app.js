@@ -110,7 +110,7 @@ async function loadLocalDatabase() {
   try {
     const db = await openCache();
     let bytes = await new Promise((resolve, reject) => {
-      const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get('database');
+      const request = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).get('database-v2');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -118,7 +118,7 @@ async function loadLocalDatabase() {
       const response = await fetch('rf_cache.db', {cache: 'no-store'});
       if (!response.ok) throw new Error('rf_cache.db não publicado');
       bytes = await response.arrayBuffer();
-      db.transaction(CACHE_STORE, 'readwrite').objectStore(CACHE_STORE).put(bytes, 'database');
+      db.transaction(CACHE_STORE, 'readwrite').objectStore(CACHE_STORE).put(bytes, 'database-v2');
     }
     const SQL = await initSqlJs({locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`});
     localDb = new SQL.Database(new Uint8Array(bytes));
@@ -133,7 +133,26 @@ function queryLocal(site, uf, techs) {
   const result = localDb.exec(`SELECT tech,banda,azimuth,bcch,psc,pci,bandwidth,cidade,bairro,endereco,earfcn,latitude,longitude,mimo FROM rf WHERE site = ? AND uf = ? AND tech IN (${placeholders})`, [site, uf, ...techs]);
   if (!result.length) return [];
   const columns = result[0].columns;
-  return result[0].values.map(values => Object.fromEntries(columns.map((name, index) => [name, values[index] ?? '']))).map(row => ({...row, __tech: row.tech}));
+  return result[0].values.map(values => Object.fromEntries(columns.map((name, index) => [name, values[index] ?? '']))).map(row => ({
+    ...row,
+    __tech: row.tech,
+    '[P]SITE': row.site,
+    '[P]UF': row.uf,
+    '[P]BANDA_OPERACAO': row.banda,
+    '[P]AZIMUTH': row.azimuth,
+    '[P]BCCH': row.bcch,
+    '[P]PSC': row.psc,
+    '[P]PCI': row.pci,
+    '[P]BANDWIDTH': row.bandwidth,
+    '[P]CIDADE': row.cidade,
+    '[P]BAIRRO': row.bairro,
+    '[P]ENDERECO': row.endereco,
+    '[P]LATITUDE': row.latitude,
+    '[P]LONGITUDE': row.longitude,
+    '[P]MIMO': row.mimo,
+    '[P]DL_UARFCN': row.tech === '3G' ? row.earfcn : '',
+    '[P]DL_EARFCN': ['4G', '5G'].includes(row.tech) ? row.earfcn : ''
+  }));
 }
 async function queryRemote(site, uf, techs) {
   const local = queryLocal(site, uf, techs);
